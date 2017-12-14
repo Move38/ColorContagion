@@ -11,12 +11,18 @@
 #include "blinkstate.h"
 
 Color colors[] = { RED , CYAN , MAGENTA, YELLOW, BLUE, GREEN };
+byte hues[] = { 0 , 126, 42, 168, 84, 210};
 uint32_t timeLastChanged_ms = 0;
-uint16_t changeHoldoff_ms = 1000;
+uint32_t changeHoldoff_ms = 1000;
+uint32_t changeDelay_ms = 200;  // create a delay in the wave of color
+uint32_t colorFadeDuration_ms = 2000; // fade to our new color over time
+byte startHue, endHue;
 
 void setup() {
   setState(1);
-  setColor(colors[0]);
+  setColor( makeColorHSB(hues[getState()-1], 255, 255) );
+  startHue = hues[getState()-1];
+  endHue = hues[getState()-1];
 }
 
 void loop() {
@@ -39,8 +45,9 @@ void loop() {
       numNeighbors++;
       
       if(neighborState != getState() && curTime_ms - timeLastChanged_ms > changeHoldoff_ms){
+        startHue = hues[getState()-1];
         setState( neighborState );
-        setColor( colors[getState()-1] );
+        endHue = hues[getState()-1];
         timeLastChanged_ms = curTime_ms;
       }
     }
@@ -51,8 +58,39 @@ void loop() {
     setColor(WHITE);
   }
   else {
-    // together, show state
-    setColor( colors[getState()-1] );
+    // if is transitioning do so
+    if(curTime_ms - timeLastChanged_ms < colorFadeDuration_ms) {
+      // linearly interpolate over HSB to arrive at new color
+      uint32_t delta_ms = curTime_ms - timeLastChanged_ms;
+      byte hue = map(delta_ms, 0, colorFadeDuration_ms, uint32_t(startHue), uint32_t(endHue));
+      setColor( makeColorHSB(hue,255,255) );
+    }
+    else {
+      // else show current color
+      setColor( makeColorHSB(hues[getState()-1], 255, 255) );
+    }
   }
 
 }
+
+byte map( uint32_t var, uint32_t leftBound, uint32_t rightBound, uint32_t from, uint32_t to) {
+  
+  float progress, mappedValue;
+
+  if(from < to) {
+  
+    progress = float(var - leftBound) / float(rightBound - leftBound);
+  
+    mappedValue = progress * float(to - from) + float(from);
+  }
+  else {
+  
+    progress = float(var - leftBound) / float(rightBound - leftBound);
+  
+    mappedValue = float(from) - progress * float(from - to);
+  }
+  
+  
+  return byte(mappedValue); 
+}
+
