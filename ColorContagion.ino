@@ -31,8 +31,9 @@ void loop() {
   uint32_t curTime_ms = millis();
 
   if( buttonSingleClicked() ) {
+        startHue = hues[getState()-1];
         setState( (getState() % 6) + 1 );
-        setColor( colors[getState()-1] );
+        endHue = hues[getState()-1];
         timeLastChanged_ms = curTime_ms;
   }
 
