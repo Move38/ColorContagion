@@ -10,6 +10,14 @@
 #include "blinklib.h"
 #include "blinkstate.h"
 
+#define MS_PER_S (1000)
+
+uint16_t speed_d_per_s = 360; // speed is represented in degrees/sec, 360 would be a single rotation per second
+float speed_d_per_ms = ( (float) speed_d_per_s) / MS_PER_S ; 
+float rotation_d = 0;
+
+uint32_t timeOfLastLoop_ms = 0;
+
 Color colors[] = { RED , CYAN , MAGENTA, YELLOW, BLUE, GREEN };
 byte hues[] = { 0 , 126, 42, 168, 84, 210};
 uint32_t timeLastChanged_ms = 0;
@@ -56,7 +64,25 @@ void loop() {
   
   if(numNeighbors == 0) {
     // alone, so glow white
-    setColor(WHITE);
+    uint32_t timeDiff_ms = curTime_ms - timeOfLastLoop_ms;
+    
+    if( timeDiff_ms >= 1) {
+      rotation_d += timeDiff_ms * speed_d_per_ms ;
+      
+      if(rotation_d >= 360.f) {
+        rotation_d -= 360.f;
+      }
+      
+      FOREACH_FACE(f) {
+        // determine brightness based on the unit circle (sinusoidal fade)
+  
+        uint16_t angle_of_face_d = 60 * f;      // (360 degrees) / (6 faces) = degrees per face
+  
+        int brightness = 255 * (1 + sin_d( angle_of_face_d  + rotation_d ) ) / 2; 
+  
+        setFaceColor( f , makeColorHSB(0,0,brightness));
+      }
+    }
   }
   else {
     // if is transitioning do so
@@ -71,6 +97,8 @@ void loop() {
       setColor( makeColorHSB(hues[getState()-1], 255, 255) );
     }
   }
+
+  timeOfLastLoop_ms = curTime_ms;
 
 }
 
@@ -94,4 +122,12 @@ byte map( uint32_t var, uint32_t leftBound, uint32_t rightBound, uint32_t from, 
   
   return byte(mappedValue); 
 }
+
+// Sin in degrees ( standard sin() takes radians )
+
+float sin_d( uint16_t degrees ) {
+
+  return sin( ( degrees / 360.0F ) * 2.0F * PI   ); 
+}
+
 
